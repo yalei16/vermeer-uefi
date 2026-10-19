@@ -6,16 +6,20 @@ requires_kernel_header = true
 
 #
 # UEFI FD Configs
+#  取自设备原厂 uefiplat.cfg：
+#   0xA7000000, 0x00400000, "UEFI FD"
+#   0xA7400000, 0x00200000, "UEFI FD Reserved"
 #
 [uefi_fd]
-fd_base = 0xBAB00000
-fd_size = 0x300000
+fd_base = 0xA7000000
+fd_size = 0x400000
 
 #
 # Android Boot Image Configs
 #
 [boot_image]
 requires_boot_shim = true
-kernel_compression = "gzip"
+kernel_compression = "none"
 dtb_location       = "kernel"
-header_version     = 1
+header_version     = 4
+pagesize           = 4096
