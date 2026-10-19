@@ -23,7 +23,7 @@
   BUILD_TARGETS                  = RELEASE|DEBUG
   SKUID_IDENTIFIER               = DEFAULT
   FLASH_DEFINITION               = vermeerPkg/vermeer.fdf
-  USE_CUSTOM_DISPLAY_DRIVER      = 1
+  USE_CUSTOM_DISPLAY_DRIVER      = 0
 
   #
   # 0 = SM8550-AB
