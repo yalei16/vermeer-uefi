@@ -1,0 +1,80 @@
+name: build-vermeer-uefi
+
+on:
+  workflow_dispatch:
+    inputs:
+      use_nuwa_binaries:
+        description: "Binaries/vermeer 不存在时，用 nuwa 的 DXE 二进制顶替（同 SM8550 / 同厂商）"
+        type: boolean
+        default: true
+      upstream:
+        description: "Mu-Silicium 仓库"
+        type: string
+        default: "https://github.com/Xlie-Electronic-Customs/Mu-Silicium.git"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 依赖
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential uuid-dev iasl nasm \
+            python3 python3-pip python3-venv git gcc-aarch64-linux-gnu \
+            pkg-config libssl-dev
+
+      - name: 拉取 Mu-Silicium（含子模块，约 5 GB）
+        run: |
+          git clone --depth 1 --recursive "${{ inputs.upstream }}" mu
+          cd mu && git log -1 --format='%H %ad %s' --date=short
+
+      - name: 覆盖 vermeerPkg / 配置 / DTB
+        run: |
+          cp -av overlay/. mu/
+
+      - name: 准备 Binaries/vermeer
+        run: |
+          cd mu
+          if [ -d "Binaries/vermeer" ] && [ -n "$(ls -A Binaries/vermeer 2>/dev/null)" ]; then
+            echo "已存在 Binaries/vermeer"
+          else
+            echo "Binaries/vermeer 缺失 -> 用 nuwa 顶替"
+            if [ "${{ inputs.use_nuwa_binaries }}" != "true" ]; then
+              echo "::error::Binaries/vermeer 不存在，且未允许用 nuwa 顶替"
+              exit 1
+            fi
+            cp -a Binaries/nuwa Binaries/vermeer
+          fi
+          ls Binaries/vermeer | head
+
+      - name: pip 依赖
+        run: |
+          cd mu
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r pip-requirements.txt
+
+      - name: 编译 UEFI
+        run: |
+          cd mu
+          python3 build_uefi.py -d vermeer
+
+      - name: 产物清单
+        if: always()
+        run: |
+          find mu/Build -maxdepth 4 -type f \( -name '*.img' -o -name '*.fd' -o -name '*.fd.gz' -o -name '*-bootshim*' \) -printf '%s\t%p\n' | sort -k2 || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vermeer-uefi
+          path: |
+            mu/Build/**/*.img
+            mu/Build/**/*.fd
+            mu/Build/**/*.fd.gz
+            mu/Build/**/*bootshim*
+            mu/Build/**/*.log
+          if-no-files-found: warn
+          retention-days: 14
