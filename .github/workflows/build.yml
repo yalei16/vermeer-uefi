@@ -24,7 +24,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq build-essential uuid-dev iasl nasm \
             python3 python3-pip python3-venv git gcc-aarch64-linux-gnu \
-            pkg-config libssl-dev clang llvm lld
+            pkg-config libssl-dev clang llvm lld mono-devel
 
       - name: 拉取 Mu-Silicium（含子模块，约 5 GB）
         run: |
@@ -35,17 +35,15 @@ jobs:
         run: |
           cp -av overlay/. mu/
 
-      - name: 准备 Binaries/vermeer
+      - name: 准备 Binaries/vermeer（本机 uefi_a 提取的 99 个模块）
         run: |
           cd mu
-          if [ -d "Binaries/vermeer" ] && [ -n "$(ls -A Binaries/vermeer 2>/dev/null)" ]; then
-            echo "已存在 Binaries/vermeer"
+          rm -rf Binaries/vermeer
+          if git clone --depth 1 https://github.com/yalei16/vermeer-uefi-binaries.git /tmp/vbin 2>/dev/null && [ -d /tmp/vbin/vermeer ]; then
+            cp -a /tmp/vbin/vermeer Binaries/vermeer
+            echo "已使用 vermeer 自己的 DXE 二进制"
           else
-            echo "Binaries/vermeer 缺失 -> 用 nuwa 顶替"
-            if [ "${{ inputs.use_nuwa_binaries }}" != "true" ]; then
-              echo "::error::Binaries/vermeer 不存在，且未允许用 nuwa 顶替"
-              exit 1
-            fi
+            echo "::warning::拉取 vermeer 二进制失败，回退 nuwa"
             cp -a Binaries/nuwa Binaries/vermeer
           fi
           ls Binaries/vermeer | head

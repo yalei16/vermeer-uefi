@@ -29,11 +29,14 @@ overlay/Resources/DTBs/vermeer.dtb     ← 我们编译的 sm8550-xiaomi-vermeer
 
 ## 已知缺口（重要）
 
-1. **`Binaries/vermeer` 还不存在。** Mu-Silicium 的 `Binaries/` 是子模块
-   （`Project-Silicium/Device-Binaries`），里面是**从设备原厂 UEFI（abl.img）里提取出来的
-   DXE 驱动**，每个机型一份，79 个机型里没有 vermeer。
-   - 现阶段 CI 默认用 **nuwa 的二进制顶替**（同 SoC、同厂商），只为先把镜像编出来、看能不能点亮；
-   - 要真正可用，需要从 **vermeer 的 `abl_a` 分区**提取 DXE 驱动（UEFIExtract），替换 `Binaries/vermeer`。
+1. **`Binaries/vermeer` 来源**：Mu-Silicium 的 `Binaries/` 是子模块
+   （`Project-Silicium/Device-Binaries`），里面是从各机型原厂 UEFI（`uefi_a` 分区）提取的
+   DXE 驱动，79 个机型里没有 vermeer。
+   本仓库配套的 `yalei16/vermeer-uefi-binaries` 是从**本机 `uefi_a` 提取的 99 个模块**：
+   - 用 `UEFIExtract` + `uefi_firmware` 从 ELF 里剥出 FV、解压嵌套卷并导出 PE32/TE；
+   - 99/99 的 GUID 与 nuwa（小米 13 Pro，同 SM8550）的 `.inf` 一一对应，因此
+     `.inf`/`.depex` 沿用 nuwa 的，`.efi` 换成 vermeer 自己的（同 GUID ⇒ 同一模块）；
+   - CI 会把 `vermeer/` 覆盖到 `mu/Binaries/vermeer`。
 2. **内存映射与 ConfigurationMap** 仍沿用 nuwa 的表（`MemoryMapLib.c` / `ConfigurationMapLib.c`），
    其中 `PcdSchedulerInterfaceAddr=0xA703A948`、`PcdDtbExtensionAddr=0xA703A0C8` 是 XBL 提供的地址，
    两台机 XBL 版本不同就可能对不上 → 首次点亮后要按串口/UEFI 日志修。
